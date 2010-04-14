@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -32,6 +33,8 @@
 #define DEBUG_UEVENT 0
 
 #define UEVENT_PARAMS_MAX 32
+
+#define HSUSB_COMPOSITION_DEVICE "/sys/devices/platform/msm_hsusb_periphera/composition"
 
 enum uevent_action { action_add, action_remove, action_change };
 
@@ -73,6 +76,7 @@ static struct uevent_dispatch dispatch_table[] = {
 
 static boolean low_batt = false;
 static boolean door_open = true;
+static boolean plugged_in = false;
 
 int process_uevent_message(int socket)
 {
@@ -238,19 +242,37 @@ static char *get_uevent_param(struct uevent *event, char *param_name)
 
 static int handle_powersupply_event(struct uevent *event)
 {
-    char *ps_type = get_uevent_param(event, "POWER_SUPPLY_TYPE");
+	char *ps_type = get_uevent_param(event, "POWER_SUPPLY_TYPE");
 
-    if (!strcasecmp(ps_type, "battery")) {
-        char *ps_cap = get_uevent_param(event, "POWER_SUPPLY_CAPACITY");
-        int capacity = atoi(ps_cap);
-  
-        if (capacity < 5)
-            low_batt = true;
-        else
-            low_batt = false;
-        volmgr_safe_mode(low_batt || door_open);
-    }
-    return 0;
+	if (!strcasecmp(ps_type, "battery")) {
+		char *ps_cap = get_uevent_param(event, "POWER_SUPPLY_CAPACITY");
+		int capacity = atoi(ps_cap);
+
+		if (capacity < 5)
+			low_batt = true;
+		else
+			low_batt = false;
+		volmgr_safe_mode(low_batt || door_open);
+
+	} else if (!strcasecmp(ps_type, "usb")) {
+		char *ps_online = get_uevent_param(event, "POWER_SUPPLY_ONLINE");
+		int fd = open(HSUSB_COMPOSITION_DEVICE, O_WRONLY);
+		if (fd < 0) {
+			LOGE("open(%s) for write failed: %s (%d)", HSUSB_COMPOSITION_DEVICE,
+					strerror(errno), errno);
+			return 0;
+		}
+
+		if (plugged_in && atoi(ps_online) == 0) {
+		    write(fd, "c004", 4);
+		    plugged_in = false;
+		} else if (!plugged_in && atoi(ps_online) > 0) {
+		    write(fd, "c001", 4);
+		    plugged_in = true;
+		}
+		close(fd);
+	}
+	return 0;
 }
 
 static int handle_switch_event(struct uevent *event)
@@ -279,6 +301,7 @@ static int handle_switch_event(struct uevent *event)
 
 static int handle_battery_event(struct uevent *event)
 {
+    LOGI("Got battery event from vold");
     return 0;
 }
 

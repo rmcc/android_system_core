@@ -471,7 +471,10 @@ int volmgr_enable_ums(boolean enable)
                     if (rc)
                         LOGE("unable to shutdown volume '%s'", v->mount_point);
                     pthread_mutex_unlock(&v->lock);
-                }
+		}
+		// Apparently the ONE can only export one device at 
+		// once... so don't export others!
+		return 0;
             } else {
                 // Disable UMS
                 pthread_mutex_lock(&v->lock);
@@ -494,6 +497,7 @@ int volmgr_enable_ums(boolean enable)
                          v->dev->disk->major, v->dev->disk->minor);
                 }
                 pthread_mutex_unlock(&v->lock);
+
             }
         }
  next_vol:
