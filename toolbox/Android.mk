@@ -2,18 +2,14 @@ LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
 TOOLS := \
-	ls \
-	mount \
 	cat \
 	ps \
 	kill \
-	ln \
 	insmod \
 	rmmod \
 	lsmod \
 	ifconfig \
 	setconsole \
-	rm \
 	mkdir \
 	rmdir \
 	reboot \
@@ -22,7 +18,6 @@ TOOLS := \
 	date \
 	wipe \
 	sync \
-	umount \
 	start \
 	stop \
 	notify \
@@ -30,8 +25,6 @@ TOOLS := \
 	dmesg \
 	route \
 	hd \
-	dd \
-	df \
 	getprop \
 	setprop \
 	watchprops \
@@ -40,19 +33,31 @@ TOOLS := \
 	renice \
 	printenv \
 	smd \
-	chmod \
-    chown \
 	newfs_msdos \
 	netstat \
 	ioctl \
-	mv \
 	schedtop \
-	top \
 	iftop \
 	id \
 	vmstat \
 	nandread \
-        ionice
+    ionice
+
+ifneq ($(TINY_TOOLBOX),true)
+TOOLS += \
+	ls \
+	mount \
+	ln \
+	dd \
+	rm \
+	umount \
+	df \
+	chmod \
+    chown \
+	mv \
+	top
+endif
+
 
 LOCAL_SRC_FILES:= \
 	toolbox.c \
