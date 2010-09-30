@@ -627,8 +627,49 @@ static void import_kernel_cmdline(int in_qemu)
         ptr = x;
     }
 
+	
+
         /* don't expose the raw commandline to nonpriv processes */
     chmod("/proc/cmdline", 0440);
+}
+
+/* The ADQ board exports the values in specific /proc files... */
+
+static void import_adq_values()
+{
+    char filecontent[1024];
+    int fd;
+
+	/* Serial number */
+    fd = open("/proc/serialnumber", O_RDONLY);
+    if (fd >= 0) {
+        int n = read(fd, filecontent, 1023);
+        if (n < 0) n = 0;
+
+        /* get rid of trailing newline, it happens */
+        if (n > 0 && filecontent[n-1] == '\n') n--;
+
+        filecontent[n] = 0;
+        close(fd);
+		if (n > 0)
+            strlcpy(serialno, filecontent, sizeof(serialno));
+    }
+
+	/* Baseband */
+    fd = open("/proc/baseband", O_RDONLY);
+    if (fd >= 0) {
+        int n = read(fd, filecontent, 1023);
+        if (n < 0) n = 0;
+
+        /* get rid of trailing newline, it happens */
+        if (n > 0 && filecontent[n-1] == '\n') n--;
+
+        filecontent[n] = 0;
+        close(fd);
+		if (n > 0)
+            strlcpy(baseband, filecontent, sizeof(baseband));
+    }
+
 }
 
 static void get_hardware_name(void)
@@ -857,6 +898,7 @@ int main(int argc, char **argv)
     /* pull the kernel commandline and ramdisk properties file in */
     qemu_init();
     import_kernel_cmdline(0);
+    import_adq_values();
 
     get_hardware_name();
     snprintf(tmp, sizeof(tmp), "/init.%s.rc", hardware);
